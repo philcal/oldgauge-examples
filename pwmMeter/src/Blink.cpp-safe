@@ -1,0 +1,401 @@
+/*
+ *  https://www.instructables.com/Blinking-an-LED-With-ESP32/
+ *
+ * Reference:
+ *  Button to enter config mode
+ *  https://github.com/tzapu/WiFiManager/blob/master/examples/Advanced/Advanced.ino
+ * 
+ *  Saving values to file system on device
+ *  https://github.com/tzapu/WiFiManager/blob/master/examples/Parameters/SPIFFS/AutoConnectWithFSParameters/AutoConnectWithFSParameters.ino
+ * 
+ *  Introducing SPIFFS
+ *  https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/
+ */
+#include <Arduino.h>
+#include <WiFiManager.h>         //https://github.com/tzapu/WiFiManager
+#include <HTTPClient.h>
+#include <Arduino_JSON.h>
+// #include <ArduinoJson.h>          //https://github.com/bblanchon/ArduinoJson
+
+#ifdef ESP32
+  #include <SPIFFS.h>
+#endif
+
+// Note these are not the pin seuence on the development board,
+// but rather the pins on the chip.
+// See https://lastminuteengineers.com/esp32-pinout-reference/
+#define DAC_PIN1 25
+// #define LED1_PIN 26
+#define LED1_PIN 32 // Blue = connect
+#define LED2_PIN 27 // Red = error
+#define RESET_PIN 34 // Enter config mode
+
+#define POLL_DELAY 5000 // ms
+#define ERROR_DELAY 5000 // ms
+
+// const char* host = "tooltwist.com";
+const String URL = "http://192.168.68.112:3000/usage/12345";
+const int port = 80;
+
+const int timeout = 120;
+int previousResetPin = HIGH;
+
+    
+WiFiManager wm;
+char param_passphrase[50];
+char param_pin[10] = "12345";
+char param_clusterID[128] = "abcdef12345";
+
+//flag for saving data
+bool shouldSaveConfig = false;
+
+//callback notifying us of the need to save config
+void saveConfigCallback () {
+  Serial.println("Should save config");
+  shouldSaveConfig = true;
+}
+
+void setup()
+{
+  Serial.println("\n\n\nsetup()");
+  // initialize LED digital pin as an output.
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
+  pinMode(RESET_PIN, INPUT_PULLUP);
+
+  // Explicitly set mode, esp defaults to STA+AP
+  // it is a good practice to make sure your code sets wifi mode how you want it.
+  WiFi.mode(WIFI_STA);
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+
+  //clean FS, for testing
+  // SPIFFS.format();
+
+  /*
+   *  Read configuration from FS json
+   */
+  Serial.println("mounting FS...");
+  if (SPIFFS.begin(true)) { // format on fail
+    Serial.println("mounted file system");
+    if (SPIFFS.exists("/config.json")) {
+      //file exists, reading and loading
+      Serial.println("reading config file");
+      File configFile = SPIFFS.open("/config.json", "r");
+      if (configFile) {
+        Serial.println("opened config file");
+        size_t size = configFile.size();
+        // Allocate a buffer to store contents of the file.
+        std::unique_ptr<char[]> buf(new char[size]);
+
+        configFile.readBytes(buf.get(), size);
+        Serial.println(buf.get());
+
+//  #if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
+//         DynamicJsonDocument json(1024);
+//         auto deserializeError = deserializeJson(json, buf.get());
+//         serializeJson(json, Serial);
+//         if ( ! deserializeError ) {
+// #else
+//         DynamicJsonBuffer jsonBuffer;
+//         JsonObject& json = jsonBuffer.parseObject(buf.get());
+//         json.printTo(Serial);
+//         if (json.success()) {
+// #endif
+        JSONVar json = JSON.parse(buf.get());
+        Serial.println("json type is");
+        Serial.println(JSON.typeof(json));
+        if (JSON.typeof(json) != "undefined") {
+        //   Serial.println("Parsing input failed!");
+        //   errorBlink(2);
+        //   return;
+        // }
+          Serial.println("\nparsed json");
+          strcpy(param_passphrase, json["passphrase"]);
+          strcpy(param_pin, json["pin"]);
+          strcpy(param_clusterID, json["clusterID"]);
+        } else {
+          Serial.println("failed to load json config");
+        }
+        configFile.close();
+      } else {
+        Serial.println("Did not open config file");
+      }
+    } else {
+      Serial.println("Config file does not exist");
+    }
+  } else {
+    Serial.println("failed to mount FS");
+  }
+  //end read
+
+  Serial.println("The initial values are: ");
+  Serial.println("\tpassphrase: " + String(param_passphrase));
+  Serial.println("\tclusterID: " + String(param_clusterID));
+  Serial.println("\tPIN: " + String(param_pin));
+
+
+  // reset settings - wipe stored credentials for testing
+  // these are stored by the esp library
+  // wm.resetSettings();
+Serial.println("***** ok 0a");
+
+  // Add text box for pass phrase
+  WiFiManagerParameter passphrase_text_box("passphrase", "Enter a passphrase", param_passphrase, 50);
+  WiFiManagerParameter pin_text_box("pin", "PIN", param_pin, 10);
+  WiFiManagerParameter clusterID_text_box("clusterID", "ClusterID", param_clusterID, 128);
+
+Serial.println("***** ok 0c");
+  wm.addParameter(&passphrase_text_box);
+  wm.addParameter(&pin_text_box);
+  wm.addParameter(&clusterID_text_box);
+Serial.println("***** ok 0d");
+
+Serial.println("***** ok 0e");
+  //set config save notify callback
+  wm.setSaveConfigCallback(saveConfigCallback);
+
+  // Set a static IP address.
+  // This is a fix for Android devices not finding the captive portal.
+  // See https://github.com/tzapu/WiFiManager/issues/841
+  wm.setAPStaticIPConfig(IPAddress(8,8,8,8), IPAddress(8,8,8,8), IPAddress(255,255,255,0));
+  // wm.setShowStaticFields(true); // force show static ip fields
+  // wm.setShowDnsFields(true);    // force show dns field always
+
+  // wifi scan settings
+  // wm.setRemoveDuplicateAPs(false); // do not remove duplicate ap names (true)
+  // wm.setMinimumSignalQuality(20);  // set min RSSI (percentage) to show in scans, null = 8%
+  // wm.setShowInfoErase(false);      // do not show erase button on info page
+  // wm.setScanDispPerc(true);       // show RSSI as percentage not graph icons
+  
+  // wm.setBreakAfterConfig(true);   // always exit configportal even if wifi save fails
+
+
+  //set a timeout until configuration portal gets turned off
+  //useful to make it all retry or go to sleep
+  //in seconds
+  //wm.setTimeout(120);
+  // wm.setConnectTimeout(20); // how long to try to connect for before continuing
+  // wm.setConfigPortalTimeout(30); // auto close configportal after n seconds
+  // wm.setCaptivePortalEnable(false); // disable captive portal redirection
+  // wm.setAPClientCheck(true); // avoid timeout if client connected to softap
+
+    // Automatically connect using saved credentials,
+    // if connection fails, it starts an access point with the specified name ( "AutoConnectAP" ),
+    // if empty will auto generate SSID, if password is blank it will be anonymous AP (wm.autoConnect())
+    // then goes into a blocking loop awaiting configuration and will return success result
+
+    bool res;
+Serial.println("***** ok 1");
+    digitalWrite(LED1_PIN, HIGH);
+    digitalWrite(LED2_PIN, HIGH);
+Serial.println("***** ok 1a");
+    res = wm.autoConnect("oldgauge");
+    // res = wm.startConfigPortal("oldgauge");
+
+Serial.println("***** ok 1b");
+    digitalWrite(LED1_PIN, LOW);
+    digitalWrite(LED2_PIN, LOW);
+    // res = wm.autoConnect("oldguage","password"); // password protected ap
+Serial.println("***** ok 2");
+
+    if(!res) {
+        Serial.println("Failed to connect");
+        // ESP.restart();
+    } 
+    else {
+        //if you get here you have connected to the WiFi    
+        Serial.println("connected to wifi...");
+    }
+
+Serial.println("ok 3");
+
+  //read updated parameters
+  strcpy(param_passphrase, passphrase_text_box.getValue());
+  strcpy(param_clusterID, clusterID_text_box.getValue());
+  strcpy(param_pin, pin_text_box.getValue());
+  Serial.println("The values after entry are: ");
+  Serial.println("\tpassphrase: " + String(param_passphrase));
+  Serial.println("\tclusterID: " + String(param_clusterID));
+  Serial.println("\tPIN: " + String(param_pin));
+
+  // Save the custom parameters to File System
+  if (shouldSaveConfig) {
+    Serial.println("saving config");
+// #if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
+//     DynamicJsonDocument json(1024);
+// #else
+//     DynamicJsonBuffer jsonBuffer;
+//     JsonObject& json = jsonBuffer.createObject();
+// #endif
+    JSONVar json;
+    json["passphrase"] = param_passphrase;
+    json["clusterID"] = param_clusterID;
+    json["pin"] = param_pin;
+
+    File configFile = SPIFFS.open("/config.json", "w");
+    if (!configFile) {
+      Serial.println("failed to open config file for writing");
+    }
+    // json.printTo
+    // String jsonString = JSON.stringify(json);
+    // Serial.println(jsonString);
+    // configFile.write()
+
+// #if defined(ARDUINOJSON_VERSION_MAJOR) && ARDUINOJSON_VERSION_MAJOR >= 6
+//     serializeJson(json, Serial);
+//     serializeJson(json, configFile);
+// #else
+    json.printTo(Serial);
+    Serial.println();
+    json.printTo(configFile);
+// #endif
+    configFile.close();
+    //end save
+  } else {
+    Serial.println("Do not save config");
+  }
+
+  Serial.println("local ip");
+  Serial.println(WiFi.localIP());
+}
+
+void errorBlink(int num) {
+  // Serial.print("errorBlink()");
+  // Serial.println(num);
+
+  digitalWrite(LED1_PIN, LOW);
+  for (int i = 0; i < num; i++) {
+    digitalWrite(LED2_PIN, HIGH); // Error LED
+    delay(500);
+    digitalWrite(LED2_PIN, LOW); // Error LED
+    delay(500);
+  }
+  delay(ERROR_DELAY);
+}
+
+void loop()
+{
+  /*
+   *  See:
+   *    ESP32 HTTP GET and HTTP POST with Arduino IDE (JSON, URL Encoded, Text)
+   *    https://randomnerdtutorials.com/esp32-http-get-post-arduino/
+   */
+
+  //   digitalWrite(LED1_PIN, LOW);
+  // digitalWrite(LED2_PIN, LOW);
+
+
+  // Check for the RESET pin being set.
+  int value = digitalRead(RESET_PIN);
+  Serial.println( value );
+
+  if (value != previousResetPin) {
+    previousResetPin = value;
+    if (value == LOW) {
+      // Just entered reset mode.
+      digitalWrite(LED1_PIN, HIGH);
+      digitalWrite(LED2_PIN, HIGH);
+      Serial.println("Enter wifi config mode (from loop)");
+      // WiFiManager wm;
+      // wm.resetSettings();
+      // wm.setConfigPortalTimeout(timeout);
+      
+      // Fix for Android devices not finding the captive portal
+      // See https://github.com/tzapu/WiFiManager/issues/841
+      // wm.setAPStaticIPConfig(IPAddress(8,8,8,8), IPAddress(8,8,8,8), IPAddress(255,255,255,0));
+Serial.println("ok 10");
+
+      if (!wm.startConfigPortal("Oldgauge2")) {
+        Serial.println("failed to connect and hit timeout");
+        //ZZZ Blink LEDS?
+        delay(3000);
+        ESP.restart();
+        delay(5000);
+      }
+Serial.println("ok 11");
+      Serial.println("Connected, yeey!");
+      digitalWrite(LED1_PIN, LOW);
+      digitalWrite(LED2_PIN, LOW);
+
+    }
+  }
+
+
+  HTTPClient http;
+
+
+  // Your Domain name with URL path or IP address with path
+  http.begin(URL.c_str());
+  Serial.println(URL);
+
+  // If your need Node-RED/server authentication, insert user and password below
+  //http.setAuthorization("REPLACE_WITH_SERVER_USERNAME", "REPLACE_WITH_SERVER_PASSWORD");
+
+  // Send HTTP GET request
+  digitalWrite(LED_BUILTIN, HIGH);
+  digitalWrite(LED1_PIN, HIGH);
+  digitalWrite(LED2_PIN, LOW);
+
+  // Call the server
+  int httpResponseCode = http.GET();
+  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED1_PIN, LOW);
+  // digitalWrite(LED2_PIN, LOW);
+
+     if (httpResponseCode == 200) {
+        // Serial.print("HTTP Response code: ");
+        // Serial.println(httpResponseCode);
+        String payload = http.getString();
+        
+        // Free resources
+        http.end();
+
+
+        Serial.println(payload);
+        JSONVar myObject = JSON.parse(payload);
+  
+        // JSON.typeof(jsonVar) can be used to get the type of the var
+        if (JSON.typeof(myObject) == "undefined") {
+          Serial.println("Parsing input failed!");
+          errorBlink(2);
+          return;
+        }
+      
+        // Serial.print("JSON object = ");
+        Serial.println(myObject);
+      
+        // myObject.keys() can be used to get an array of all the keys in the object
+        // JSONVar keys = myObject.keys();
+      
+
+        if (myObject.hasOwnProperty("meter")) {
+          int myValue = myObject["meter"];
+          // Serial.print("myValue=");
+          // Serial.println(myValue);
+          // Serial.println(JSON.typeof(myValue));
+          // Set the meter position
+          dacWrite(DAC_PIN1, myValue);
+          delay(POLL_DELAY);
+
+        } else {
+          // The meter value is missing from the JSON.
+          Serial.println("Parsing value failed!");
+          errorBlink(5);
+          return;
+        }
+
+
+
+      }
+      else {
+        //  Error connecting to the server.
+        http.end();
+
+        Serial.print("Error code: ");
+        Serial.println(httpResponseCode);
+        errorBlink(3);
+        return;
+      }
+}
