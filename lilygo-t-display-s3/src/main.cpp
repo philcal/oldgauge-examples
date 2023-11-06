@@ -52,7 +52,7 @@
 #define BUTTON_1 35
 #define BUTTON_2 0
 
-TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
+TFT_eSPI tft = TFT_eSPI(160, 320); // Invoke custom library
 
 int BG_COLOR = 0xf7db;
 int fgColor = 0x8430;
@@ -81,13 +81,13 @@ void setup()
     // Serial.println("Start");
 
     // Register Our Devices
-    bool useMockData = false;
+    bool useMockData = true;
     myGauge = new Oldgauge(useMockData, -1, MYPIN_PAIRING_LED, MYPIN_ERROR_LED);
     OG_Layout *layout1 = new OG_Layout("layout1");
     myGauge->addLayout(layout1);
     // ChannelSelector* mySelector = new ChannelSelector("selector");
     // myGauge->setChannelSelector(mySelector);
-    OG_OutputDevice *myDisplay = new OG_T_Display("meter", &tft);
+    OG_OutputDevice *myDisplay = new OG_T_Display("display", &tft);
     layout1->addOutputDevice(myDisplay);
 
     // Prepare the TFT Display
