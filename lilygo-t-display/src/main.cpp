@@ -1,7 +1,10 @@
 /*
- * Initially based on https://github.com/JakubAndrysek/OG_T_Display, TTGO_Hello_world project.
  *
- * For sprites, see https://github.com/Bodmer/TFT_eSPI/blob/master/examples/Sprite/Animated_dial/Animated_dial.ino
+ * Display:
+ * https://www.lilygo.cc/products/lilygo%C2%AE-ttgo-t-display-1-14-inch-lcd-esp32-control-board
+ * 
+ * For sprites see:
+ * https://github.com/Bodmer/TFT_eSPI/blob/master/examples/Sprite/Animated_dial/Animated_dial.ino
  *
  * How to use TFT_eSPI library and ESP32 (PROGRAMING TUTORIAL PART 1.)
  * https://www.youtube.com/watch?v=WFVjsxFMbSM
@@ -33,7 +36,8 @@
 #include "dial.h"
 
 #include <Oldgauge.h>
-#include "esp-30pin.h"
+#include "lilygo-t-display.h"
+
 
 #ifndef TFT_DISPOFF
 #define TFT_DISPOFF 0x28
@@ -53,6 +57,8 @@
 #define BUTTON_2 0
 
 TFT_eSPI tft = TFT_eSPI(135, 240); // Invoke custom library
+
+Oldgauge myGauge2 = Oldgauge();
 
 int BG_COLOR = 0xf7db;
 int fgColor = 0x8430;
@@ -82,7 +88,7 @@ void setup()
 
     // Register Our Devices
     bool useMockData = false;
-    myGauge = new Oldgauge(useMockData, -1, MYPIN_PAIRING_LED, MYPIN_ERROR_LED);
+    myGauge = new Oldgauge(useMockData, MYPIN_ENTER_CONFIG_MODE, MYPIN_PAIRING_LED, MYPIN_ERROR_LED);
     OG_Layout *layout1 = new OG_Layout("layout1");
     myGauge->addLayout(layout1);
     // ChannelSelector* mySelector = new ChannelSelector("selector");
@@ -96,9 +102,16 @@ void setup()
     tft.setRotation(1);
     tft.fillScreen(BG_COLOR);
 
+    // Get going
+    myGauge->setup();
+
     // Use the buttons on the board to select channels
-    attachInterrupt(MYPIN_CHANNEL_UP, upButtonHandler, CHANGE);
-    attachInterrupt(MYPIN_CHANNEL_DOWN, downButtonHandler, CHANGE);
+    if (MYPIN_CHANNEL_UP >= 0) {
+        attachInterrupt(MYPIN_CHANNEL_UP, upButtonHandler, CHANGE);
+    }
+    if (MYPIN_CHANNEL_DOWN >= 0) {
+        attachInterrupt(MYPIN_CHANNEL_DOWN, downButtonHandler, CHANGE);
+    }
 
     // int middle = 110;
     // int middle2 = 65;
@@ -133,11 +146,12 @@ void loop()
     // // spr.set
     // spr.drawCircle(40, 40, 35, fgColor);
 
+    Serial.println("loop()");
     if (myGauge->enterConfigModeIfTilted())
     {
         return;
     }
 
     myGauge->inTheLoop();
-    delay(3000);
+    delay(1000);
 }
