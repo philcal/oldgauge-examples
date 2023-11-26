@@ -16,20 +16,24 @@
 Oldgauge *myGauge;
 
 
-void upButtonHandler()
-{
-    int value = digitalRead(MYPIN_CHANNEL_UP);
-    if (value) {
-        myGauge->channelUp();
-    }
-}
-void downButtonHandler()
-{
-    int value = digitalRead(MYPIN_CHANNEL_DOWN);
-    if (value) {
-        myGauge->channelDown();
-    }
-}
+// void modeButtonHandler()
+// {
+//     Serial.println("modeButtonHandler()");
+//     int value = digitalRead(MYPIN_CHANNEL_UP);
+//     if (value) {
+//         Serial.println("Enter menu mode");
+//         // myGauge->channelUp();
+//     }
+// }
+// void menuButtonHandler()
+// {
+//     Serial.println("menuButtonHandler()");
+//     int value = digitalRead(MYPIN_CHANNEL_DOWN);
+//     if (value) {
+
+//         // myGauge->channelDown();
+//     }
+// }
 
 void setup()
 {
@@ -38,11 +42,10 @@ void setup()
 
     Serial.begin(115200);
     Serial.setDebugOutput(true);
-    delay(1000);
+    // delay(1000);
     Serial.println("--------------------------------------------------");
     Serial.println("Start");
 
-Serial.println("ok 1");
     // Register Our Devices
     myGauge = new Oldgauge(MYPIN_ENTER_CONFIG_MODE);
     myGauge->useMockData(false);
@@ -56,17 +59,45 @@ Serial.println("ok 1");
     myGauge->setup();
 
     // Use the buttons on the board to select channels
-    if (MYPIN_CHANNEL_UP >= 0) {
-        attachInterrupt(MYPIN_CHANNEL_UP, upButtonHandler, CHANGE);
-    }
-    if (MYPIN_CHANNEL_DOWN >= 0) {
-        attachInterrupt(MYPIN_CHANNEL_DOWN, downButtonHandler, CHANGE);
-    }
+    // if (MYPIN_CHANNEL_UP >= 0) {
+        // attachInterrupt(, modeButtonHandler, CHANGE);
+        // pinMode(MYPIN_MENU_BUTTON, INPUT_PULLDOWN);
+        attachInterrupt(MYPIN_MENU_BUTTON, []{
+            int value = digitalRead(MYPIN_MENU_BUTTON);
+            if (value) {
+                myGauge->runInNextLoop([]{
+                    // Serial.println("Running in the loop #1");
+                    // myGauge->enterMenuMode();
+                    myGauge->triggerEvent(MENU);
+                    // myGauge->channelUp();
+                });
+            }
+        }, CHANGE);
+    // }
+    // if (MYPIN_CHANNEL_DOWN >= 0) {
+        pinMode(MYPIN_MENUITEM_BUTTON, INPUT_PULLDOWN);
+        attachInterrupt(MYPIN_MENUITEM_BUTTON, []{
+            Serial.println("menuItem");
+            int value = digitalRead(MYPIN_MENUITEM_BUTTON);
+            if (value) {
+                myGauge->runInNextLoop([]{
+                    // Serial.println("Running in the loop #1");
+                    // myGauge->enterMenuMode();
+                    // myGauge->triggerEvent(MENU);
+                    myGauge->channelDown();
+                    // myGauge->channelUp();
+                });
+                // myGauge->scheduleEvent(CHANNELDOWN);
+                // myGauge->triggerEvent(MENU);
+            }
+        }, CHANGE);
+        // }, FALLING);
+    // }
 }
 
 void loop()
 {
-    Serial.println("loop()");
+    // Serial.println("loop()");
 
     myGauge->loop();
     delay(1000);

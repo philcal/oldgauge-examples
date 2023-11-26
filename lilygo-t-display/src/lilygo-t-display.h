@@ -7,15 +7,14 @@
 // #define MYPIN_METER 25
 // #define MYPIN_PAIRING_LED 26
 // #define MYPIN_ENTER_CONFIG_MODE -1 // Enter config mode
-#define MYPIN_ENTER_CONFIG_MODE 0 // The down button
+#define MYPIN_ENTER_CONFIG_MODE -1 // The down button
 #define MYPIN_PAIRING_LED -1 // Blue = connect
 #define MYPIN_ERROR_LED -1 // Red = error
 
 // On the T_Display, we'll use the two buttons beside the USB-C connector
 // See https://www.lilygo.cc/products/lilygo®-ttgo-t-display-1-14-inch-lcd-esp32-control-board
-#define MYPIN_CHANNEL_UP  35
-// #define MYPIN_CHANNEL_DOWN 0
-#define MYPIN_CHANNEL_DOWN -1
+#define MYPIN_MENU_BUTTON  0
+#define MYPIN_MENUITEM_BUTTON 35
 
 // #define MYPIN_WHITE_LED_1 5
 // #define MYPIN_WHITE_LED_2 18
