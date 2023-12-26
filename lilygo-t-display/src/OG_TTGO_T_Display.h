@@ -1,6 +1,5 @@
 #include <TFT_eSPI.h>
 #include <Arduino_JSON.h>
-#include <ESP32Servo.h>
 #include <Oldgauge.h>
 
 // Note these are not the pin order on the development board, but
