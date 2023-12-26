@@ -8,6 +8,8 @@
  *  https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/gpio.html
  *  https://www.espressif.com/sites/default/files/documentation/esp32_datasheet_en.pdf
  * 
+ *  https://surplustronics.co.nz/products/9368-esp32-development-board-38-pin-espwroom-32s
+ * 
  *  Button to enter config mode
  *  https://github.com/tzapu/WiFiManager/blob/master/examples/Advanced/Advanced.ino
  * 
@@ -58,22 +60,22 @@ void setup()
   WiFi.mode(WIFI_STA);
 
   bool useMockData = true;
-  myGauge = new Oldgauge(useMockData, MYPIN_ENTER_CONFIG_MODE, MYPIN_PAIRING_LED, MYPIN_ERROR_LED);
+  myGauge = new Oldgauge(MYPIN_ENTER_CONFIG_MODE);
+    // useMockData, MYPIN_ENTER_CONFIG_MODE, MYPIN_PAIRING_LED, MYPIN_ERROR_LED);
 
-  channelSelector = new RotaryEncoderChannelSelector(myGauge,
-    PIN_ROTARY_SW, PIN_ROTARY_CLK, PIN_ROTARY_DAT,
-    encoderButtonHandler, encoderRotateHandler);
+  // channelSelector = new RotaryEncoderChannelSelector(myGauge,
+  //   PIN_ROTARY_SW, PIN_ROTARY_CLK, PIN_ROTARY_DAT,
+  //   encoderButtonHandler, encoderRotateHandler);
 
   // Register Our Devices
-  OG_Layout* layout1 = new OG_Layout("layout1");
-  myGauge->addLayout(layout1);
-  layout1->addOutputDevice(new OG_PwmMeter("meter", MYPIN_METER));
+  OG_Layout* layout1 = myGauge->createLayout("layout1");
+  layout1->addOutputDevice(new OG_PwmMeter("Meter 1", MYPIN_METER1, MYCHANNEL_METER1));
+
   layout1->addOutputDevice(new OG_ChannelSelectionLEDs(myGauge, "leds",
     MYPIN_WHITE_LED_1, MYPIN_WHITE_LED_2, MYPIN_WHITE_LED_3,
     MYPIN_WHITE_LED_4, MYPIN_WHITE_LED_5, MYPIN_WHITE_LED_6));
 
-  // initialize LED digital pin as an output.
-  pinMode(LED_BUILTIN, OUTPUT);
+  myGauge->setup();
 
   Serial.println("local ip");
   Serial.println(WiFi.localIP());
@@ -81,9 +83,6 @@ void setup()
 
 void loop()
 {
-  if (myGauge->enterConfigModeIfTilted()) {
-    return;
-  }
-  myGauge->inTheLoop();
-  delay(5000);
+  myGauge->loop();
+  delay(100);
 }

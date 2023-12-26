@@ -3,7 +3,10 @@
 // rather the pins on the chip (as shown by the labels on the board).
 // See https://www.studiopieters.nl/esp32-pinout/
 
-#define MYPIN_METER 23
+// Pin 23 dows weird stuff during boot.
+// 34 causes "E (1161) ledc: ledc_channel_config(608): gpio_num argument is invalid"
+#define MYPIN_METER1 23
+#define MYCHANNEL_METER1 0
 
 // #define MYPIN_PAIRING_LED 26
 #define MYPIN_ENTER_CONFIG_MODE 13 // Enter config mode (SP pin)
