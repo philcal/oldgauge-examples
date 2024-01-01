@@ -80,16 +80,17 @@ void loop()
   downButton->checkButton();
   switch (downButton->hasBeenPressed()) {
     case OG_SHORT_PRESS:
+    case OG_LONG_PRESS:
       // short press - switch channel.
       Serial.println("switch channel.");
       myGauge->channelDown();
       break;
 
-    case OG_LONG_PRESS:
-      // long press - enter config mode
-      Serial.println("Enter config mode");
-      myGauge->rebootAndStartCaptivePortal();
-      return;
+    // case OG_LONG_PRESS:
+    //   // long press - enter config mode
+    //   Serial.println("Long down press - enter config mode");
+    //   myGauge->rebootAndStartCaptivePortal();
+    //   return;
 
     default:
       // 

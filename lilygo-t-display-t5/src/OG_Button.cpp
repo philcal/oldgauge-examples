@@ -17,9 +17,9 @@ Serial.println("YARP 2b");
 Serial.println("YARP 2c");
   _longPressDuration = longPressDuration;
 Serial.println("YARP 2d");
-  pinMode(pin, INPUT_PULLUP);
+  pinMode(_PIN, INPUT_PULLUP);
 Serial.println("YARP 2e");
-  attachInterruptArg(digitalPinToInterrupt(pin), isr, this, CHANGE);
+  attachInterruptArg(digitalPinToInterrupt(_PIN), isr, this, CHANGE);
 Serial.println("YARP 2f");
 };
 
@@ -67,6 +67,10 @@ void IRAM_ATTR OG_Button::checkButton() {
 }
 
 OG_ButtonStatus OG_Button::hasBeenPressed() {
+  // Serial.println("OG_Button::hasBeenPressed())");
+  // Serial.print("_PIN=");
+  // Serial.println(_PIN);
+
   if (_PIN < 0) return OG_NOT_PRESSED; // disabled
 
   OG_ButtonStatus rv = _pressed;

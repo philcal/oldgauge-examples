@@ -22,14 +22,20 @@
 // #define MYPIN_MENU_BUTTON  0
 // #define MYPIN_MENUITEM_BUTTON 35
 // #define MYPIN_CHANNEL_DOWN 2
-#define MYPIN_ENTER_CONFIG_MODE -1
+#define MYPIN_ENTER_CONFIG_MODE GPIO_NUM_12
 // #define MYPIN_ENTER_CONFIG_MODE GPIO_NUM_2
-#define MYPIN_CHANNEL_UP      -1
-#define MYPIN_CHANNEL_DOWN    39
 
-#define MYPIN_METER1          GPIO_NUM_2
-#define MYPIN_METER2          -1
-#define MYPIN_METER3          -1
+#define MYPIN_CHANNEL_UP      GPIO_NUM_27
+#define MYPIN_CHANNEL_DOWN    GPIO_NUM_39 // same as second button
+#define MYPIN_METER1          GPIO_NUM_13 // CPU
+#define MYPIN_METER2          GPIO_NUM_14 // Memory
+#define MYPIN_METER3          GPIO_NUM_15 // Database
+
+// #define MYPIN_CHANNEL_UP      -1
+// #define MYPIN_CHANNEL_DOWN    -1
+// #define MYPIN_METER1          -1
+// #define MYPIN_METER2          -1
+// #define MYPIN_METER3          -1
 
 #define MYCHANNEL_METER1      0
 #define MYCHANNEL_METER2      1
